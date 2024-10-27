@@ -1,107 +1,137 @@
 <template>
   <div>
-    <a-button @click="openModal">Открыть видеоплеер</a-button>
-    <a-modal
-      v-model:open="isModalVisible"
-      :width="isMinimized ? 500 : 950"
-      @cancel="closeModal"
-      footer="{null}"
-      :inert="!isModalVisible"
+    <!-- Кнопка открытия плеера -->
+    <button
+      v-if="currentState === 'closed'"
+      @click="send({ type: 'OPEN_MINIMIZED' })"
     >
-      <div :class="isMinimized ? 'player-minimized' : 'player-full'">
-        <video ref="videoRef" controls></video>
-        <a-button @click="toggleSize">
-          {{ isMinimized ? "Развернуть" : "Уменьшить" }}
-        </a-button>
-      </div>
-    </a-modal>
+      Open Player
+    </button>
+
+    <!-- Контейнер для видеоплеера -->
+    <div
+      v-if="currentState !== 'closed'"
+      :class="{
+        minimized: currentState === 'minimized',
+        fullscreen: currentState === 'fullscreen',
+      }"
+    >
+      <!-- Видеоплеер -->
+      <video-player
+        ref="videoPlayer"
+        class="video-player"
+        :options="videoOptions"
+        @ready="onPlayerReady"
+      ></video-player>
+
+      <!-- Контролы плеера -->
+      <button @click="togglePlayPause">
+        {{ isPlaying ? "Pause" : "Play" }}
+      </button>
+      <button @click="toggleSize">
+        {{ currentState === "fullscreen" ? "Minimize" : "Fullscreen" }}
+      </button>
+      <button @click="closePlayer">Close</button>
+    </div>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { ref, onMounted, watch } from "vue";
+<script lang="ts">
+import { defineComponent, ref, watch } from "vue";
 import { useMachine } from "@xstate/vue";
-import { createMachine } from "xstate";
-// import "ant-design-vue/dist/antd.css";
-import Hls from "hls.js";
+import { videoPlayerMachine } from "../utils/videoPlayerMachine";
 
-interface VideoPlayerContext {}
-type VideoPlayerEvent = { type: "TOGGLE" };
+export default defineComponent({
+  setup() {
+    const { snapshot, send } = useMachine(videoPlayerMachine);
+    const isPlaying = ref(false); // Отслеживание состояния воспроизведения
+    const videoOptions = {
+      autoplay: false,
+      controls: true,
+      sources: [
+        {
+          src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
+          type: "application/x-mpegURL",
+        },
+      ],
+    };
 
-const videoPlayerMachine = createMachine<VideoPlayerContext, VideoPlayerEvent>({
-  id: "videoPlayer",
-  initial: "full",
-  states: {
-    full: {
-      on: {
-        TOGGLE: "minimized",
-      },
-    },
-    minimized: {
-      on: {
-        TOGGLE: "full",
-      },
-    },
-  },
-});
+    // Управление текущим состоянием
+    const currentState = ref(snapshot.value.value);
+    watch(
+      () => snapshot.value.value,
+      (newState) => {
+        currentState.value = newState;
+      }
+    );
 
-const videoUrl =
-  "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8";
-const isModalVisible = ref(false);
-const videoRef = ref<HTMLVideoElement | null>(null);
-const isMinimized = ref(false);
+    const videoPlayer = ref<InstanceType<typeof VueVideoPlayer> | null>(null);
 
-const openModal = (): void => {
-  isModalVisible.value = true;
-  loadVideo();
-};
-
-const closeModal = (): void => {
-  isModalVisible.value = false;
-};
-
-const loadVideo = (): void => {
-  if (videoRef.value) {
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoUrl);
-      hls.attachMedia(videoRef.value);
-    } else if (videoRef.value.canPlayType("application/vnd.apple.mpegurl")) {
-      videoRef.value.src = videoUrl;
+    function onPlayerReady() {
+      if (videoPlayer.value) {
+        videoPlayer.value.player.on("play", () => {
+          isPlaying.value = true;
+        });
+        videoPlayer.value.player.on("pause", () => {
+          isPlaying.value = false;
+        });
+      }
     }
-  }
-};
 
-const { snapshot: machineSnapshot, send } = useMachine(videoPlayerMachine);
+    // Переключение воспроизведения видео
+    function togglePlayPause() {
+      if (videoPlayer.value) {
+        if (isPlaying.value) {
+          videoPlayer.value.player.pause();
+        } else {
+          videoPlayer.value.player.play();
+        }
+      }
+    }
 
-const toggleSize = (): void => {
-  send({ type: "TOGGLE" });
-};
+    // Переключение размера плеера
+    function toggleSize() {
+      if (currentState.value === "fullscreen") {
+        send({ type: "OPEN_MINIMIZED" });
+      } else {
+        send({ type: "OPEN_FULLSCREEN" });
+      }
+    }
 
-watch(
-  () => machineSnapshot.value,
-  (newState) => {
-    isMinimized.value = newState.matches("minimized");
-  }
-);
+    // Закрытие плеера
+    function closePlayer() {
+      if (videoPlayer.value) {
+        videoPlayer.value.player.pause();
+      }
+      send({ type: "CLOSE" });
+    }
 
-onMounted(() => {
-  loadVideo();
+    return {
+      currentState,
+      videoOptions,
+      togglePlayPause,
+      toggleSize,
+      closePlayer,
+      onPlayerReady,
+      isPlaying,
+      send,
+    };
+  },
 });
 </script>
 
 <style scoped>
-.player-full {
-  width: 100%;
-  height: 450px;
+.minimized {
+  width: 320px;
+  height: 180px;
 }
 
-.player-minimized {
+.fullscreen {
   width: 100%;
-  height: 200px;
+  height: 100vh;
 }
 
-video {
-  width: 100%;
+.video-player {
+  max-width: 100%;
 }
 </style>
