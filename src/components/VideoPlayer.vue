@@ -15,7 +15,7 @@
       :width="currentState === 'full' ? '1000px' : '500px'"
       :style="{ top: currentState === 'full' ? '0' : '10vh' }"
       @cancel="closePlayer"
-      title="VIDEO PLAYER"
+      title="YOU GOT RICKROLLED"
       destroyOnClose
     >
       <!-- Видеоплеер -->
@@ -150,9 +150,18 @@ export default defineComponent({
 </script>
 
 <style>
-.controls {
+.closed-modal {
   display: flex;
-  justify-content: space-around;
-  margin-top: 10px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #8585ff;
+  border-radius: 5px;
+  height: 150px;
+  width: 300px;
+}
+
+.playing-icon {
+  font-size: 50px;
+  color: #8585ff;
 }
 </style>

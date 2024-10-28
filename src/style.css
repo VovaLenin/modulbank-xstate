@@ -65,60 +65,6 @@ button:focus-visible {
   text-align: center;
 }
 
-/* СТИЛИ ПРИЛОЖЕНИЯ */
-.closed-modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #8585ff;
-  border-radius: 5px;
-  height: 150px;
-  width: 300px;
-}
-
-.playing-icon {
-  font-size: 50px;
-  color: #8585ff;
-}
-
-.ant-modal {
-  top: 100px !important;
-  margin: 5vh auto auto;
-}
-
-.ant-modal-body {
-  padding: 24px;
-}
-
-.ant-modal-header {
-  border-bottom: 1px solid #f0f0f0;
-  border-radius: 2px 2px 0 0;
-  padding: 16px 24px;
-  margin: 0 !important;
-}
-
-.ant-modal-content {
-  padding: 0 !important;
-  border-radius: 2px !important;
-}
-
-.ant-modal-footer {
-  border-radius: 0 0 2px 2px !important;
-  padding: 10px 16px;
-  border-top: 1px solid #f0f0f0;
-  margin: 0 !important;
-}
-
-.ant-btn {
-  touch-action: manipulation !important;
-}
-
-.ant-btn:focus {
-  border-color: #40a9ff;
-  color: #40a9ff;
-  outline: 0;
-}
-
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

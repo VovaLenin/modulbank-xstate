@@ -1,0 +1,36 @@
+.ant-modal {
+  top: 100px !important;
+  margin: 5vh auto auto !important;
+
+  &-body {
+    padding: 24px;
+  }
+
+  &-header {
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 2px 2px 0 0;
+    padding: 16px 24px;
+    margin: 0 !important;
+  }
+
+  &-content {
+    padding: 0 !important;
+    border-radius: 2px !important;
+  }
+
+  &-footer {
+    border-radius: 0 0 2px 2px !important;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    margin: 0 !important;
+  }
+}
+
+.ant-btn {
+  touch-action: manipulation !important;
+  &:focus {
+    border-color: var(--contrast-color);
+    color: var(--contrast-color);
+    outline: 0;
+  }
+}
