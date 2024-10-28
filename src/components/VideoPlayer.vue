@@ -36,25 +36,18 @@
             />
           </template>
         </a-button>
-        <!-- <a-button
-          key="play-pause"
-          @click="togglePlayPause"
-          shape="circle"
-          :icon="playingVideo ? <PauseOutlined /> : <CaretRightFilled />"
-        > -->
-        <!-- <template v-slot:icon>
-            <component
-              :is="playingVideo ? 'PauseOutlined' : 'CaretRightFilled'"
-            />
-          </template> -->
-        <!-- </a-button> -->
+        <a-button key="play-pause" @click="togglePlayPause" shape="circle">
+          <template v-slot:icon>
+            <component :is="isPlaying ? 'PauseOutlined' : 'CaretRightFilled'" />
+          </template>
+        </a-button>
       </template>
     </a-modal>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch } from "vue";
+import { defineComponent, ref, watch, nextTick, onMounted } from "vue";
 import { useMachine } from "@xstate/vue";
 import { Modal } from "ant-design-vue";
 import {
@@ -78,7 +71,15 @@ export default defineComponent({
   setup() {
     type VideoPlayerState = "closed" | "mini" | "full";
     const { snapshot, send } = useMachine(videoPlayerMachine);
+    const videoPlayer = ref(null);
     const isPlaying = ref(false);
+    watch(
+      () => snapshot.value,
+      (newState) => {
+        console.log(newState);
+        isPlaying.value = newState.context.isPlaying;
+      }
+    );
     const videoOptions = {
       autoplay: true,
       controls: true,
@@ -97,23 +98,24 @@ export default defineComponent({
     watch(
       () => snapshot.value.value,
       (newState) => {
+        console.log(newState);
         currentState.value = newState;
       }
     );
 
-    const videoPlayer = ref<any | null>(null);
-
-    function onPlayerReady() {
-      if (videoPlayer.value && videoPlayer.value.player) {
-        videoPlayer.value.player.on("play", () => {
-          isPlaying.value = true;
-        });
-        videoPlayer.value.player.on("pause", () => {
-          isPlaying.value = false;
-        });
-      } else {
-        console.error("Video player is not ready yet.");
-      }
+    function onPlayerReady(): void {
+      nextTick(() => {
+        if (videoPlayer.value && videoPlayer.value.player) {
+          videoPlayer.value.player.on("play", () => {
+            isPlaying.value = true;
+          });
+          videoPlayer.value.player.on("pause", () => {
+            isPlaying.value = false;
+          });
+        } else {
+          console.error("Video player is not ready yet.");
+        }
+      });
     }
 
     function toggleSize() {
@@ -121,6 +123,20 @@ export default defineComponent({
         send({ type: "OPEN_MINI" });
       } else {
         send({ type: "OPEN_FULL" });
+      }
+    }
+
+    function togglePlayPause() {
+      send({ type: "TOGGLE_PLAY_PAUSE" });
+      console.log("df", videoPlayer);
+      if (videoPlayer.value && videoPlayer.value.player) {
+        if (isPlaying.value) {
+          videoPlayer.value.player.pause();
+        } else {
+          videoPlayer.value.player.play();
+        }
+      } else {
+        console.error("Video player is not ready yet.");
       }
     }
 
@@ -136,6 +152,7 @@ export default defineComponent({
       }
       send({ type: "CLOSE" });
     }
+
     return {
       currentState,
       videoOptions,
@@ -144,6 +161,9 @@ export default defineComponent({
       closePlayer,
       onPlayerReady,
       send,
+      togglePlayPause,
+      isPlaying,
+      videoPlayer,
     };
   },
 });

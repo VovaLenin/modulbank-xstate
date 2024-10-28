@@ -1,4 +1,4 @@
-import { setup } from "xstate";
+import { setup, assign } from "xstate";
 
 type VideoPlayerContext = {};
 
@@ -11,9 +11,19 @@ const videoPlayerMachine = setup({
       | { type: "CLOSE" }
       | { type: "TOGGLE_PLAY_PAUSE" },
   },
+  actions: {
+    togglePlayPause: assign({
+      isPlaying: (context) => {
+        return !context.context.isPlaying;
+      },
+    }),
+  },
 }).createMachine({
   id: "videoPlayer",
   initial: "closed",
+  context: {
+    isPlaying: false,
+  },
   states: {
     closed: {
       on: {
@@ -25,14 +35,14 @@ const videoPlayerMachine = setup({
       on: {
         CLOSE: "closed",
         OPEN_FULL: "full",
-        TOGGLE_PLAY_PAUSE: {},
+        TOGGLE_PLAY_PAUSE: { actions: "togglePlayPause" },
       },
     },
     full: {
       on: {
         CLOSE: "closed",
         OPEN_MINI: "mini",
-        TOGGLE_PLAY_PAUSE: {},
+        TOGGLE_PLAY_PAUSE: { actions: "togglePlayPause" },
       },
     },
   },
