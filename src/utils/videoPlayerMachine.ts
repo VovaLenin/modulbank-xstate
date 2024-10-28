@@ -6,8 +6,8 @@ const videoPlayerMachine = setup({
   types: {
     context: {} as VideoPlayerContext,
     events: {} as
-      | { type: "OPEN_MINIMIZED" }
-      | { type: "OPEN_FULLSCREEN" }
+      | { type: "OPEN_MINI" }
+      | { type: "OPEN_FULL" }
       | { type: "CLOSE" }
       | { type: "TOGGLE_PLAY_PAUSE" },
   },
@@ -17,21 +17,21 @@ const videoPlayerMachine = setup({
   states: {
     closed: {
       on: {
-        OPEN_MINIMIZED: "minimized",
-        OPEN_FULLSCREEN: "fullscreen",
+        OPEN_MINI: "mini",
+        OPEN_FULL: "full",
       },
     },
-    minimized: {
+    mini: {
       on: {
         CLOSE: "closed",
-        OPEN_FULLSCREEN: "fullscreen",
+        OPEN_FULL: "full",
         TOGGLE_PLAY_PAUSE: {},
       },
     },
-    fullscreen: {
+    full: {
       on: {
         CLOSE: "closed",
-        OPEN_MINIMIZED: "minimized",
+        OPEN_MINI: "mini",
         TOGGLE_PLAY_PAUSE: {},
       },
     },

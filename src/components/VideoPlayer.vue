@@ -1,41 +1,54 @@
 <template>
   <div>
     <!-- Кнопка открытия плеера -->
-    <button v-if="currentState === 'closed'" @click="openPlayer('minimized')">
-      Open Player
-    </button>
+    <div class="closed-modal">
+      <PlayCircleOutlined
+        v-if="currentState === 'closed'"
+        class="playing-icon"
+        @click="openPlayer('full')"
+      />
+    </div>
 
     <!-- Модальное окно для видеоплеера -->
     <a-modal
       :open="currentState !== 'closed'"
-      :width="currentState === 'fullscreen' ? '100vw' : '50vw'"
-      :style="{ top: currentState === 'fullscreen' ? '0' : '10vh' }"
+      :width="currentState === 'full' ? '1000px' : '500px'"
+      :style="{ top: currentState === 'full' ? '0' : '10vh' }"
       @cancel="closePlayer"
       title="VIDEO PLAYER"
-      footer="{null}"
       destroyOnClose
     >
-      <div
-        :class="{
-          minimized: currentState === 'minimized',
-          fullscreen: currentState === 'fullscreen',
-        }"
-      >
-        <!-- Видеоплеер -->
-        <video-player
-          ref="videoPlayer"
-          class="video-player"
-          :options="videoOptions"
-          @ready="onPlayerReady"
-        ></video-player>
+      <!-- Видеоплеер -->
+      <video-player
+        ref="videoPlayer"
+        class="video-player"
+        :options="videoOptions"
+        @ready="onPlayerReady"
+      ></video-player>
 
-        <!-- Контролы плеера -->
-        <div class="controls">
-          <button @click="toggleSize">
-            {{ currentState === "fullscreen" ? "Minimize" : "Fullscreen" }}
-          </button>
-        </div>
-      </div>
+      <template #footer>
+        <a-button key="screen-size" @click="toggleSize" shape="circle">
+          <template v-slot:icon>
+            <component
+              :is="
+                currentState === 'full' ? 'ShrinkOutlined' : 'ArrowsAltOutlined'
+              "
+            />
+          </template>
+        </a-button>
+        <!-- <a-button
+          key="play-pause"
+          @click="togglePlayPause"
+          shape="circle"
+          :icon="playingVideo ? <PauseOutlined /> : <CaretRightFilled />"
+        > -->
+        <!-- <template v-slot:icon>
+            <component
+              :is="playingVideo ? 'PauseOutlined' : 'CaretRightFilled'"
+            />
+          </template> -->
+        <!-- </a-button> -->
+      </template>
     </a-modal>
   </div>
 </template>
@@ -43,18 +56,35 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from "vue";
 import { useMachine } from "@xstate/vue";
+import { Modal } from "ant-design-vue";
+import {
+  CaretRightFilled,
+  ShrinkOutlined,
+  PauseOutlined,
+  ArrowsAltOutlined,
+  PlayCircleOutlined,
+} from "@ant-design/icons-vue";
 import videoPlayerMachine from "../utils/videoPlayerMachine";
-import { Modal } from "ant-design-vue"; // Импортируем модуль Modal
 
 export default defineComponent({
-  components: { Modal },
+  components: {
+    Modal,
+    CaretRightFilled,
+    ShrinkOutlined,
+    PauseOutlined,
+    ArrowsAltOutlined,
+    PlayCircleOutlined,
+  },
   setup() {
-    type VideoPlayerState = "closed" | "minimized" | "fullscreen";
+    type VideoPlayerState = "closed" | "mini" | "full";
     const { snapshot, send } = useMachine(videoPlayerMachine);
     const isPlaying = ref(false);
     const videoOptions = {
-      autoplay: false,
+      autoplay: true,
       controls: true,
+      responsive: true,
+      fluid: true,
+      loop: true,
       sources: [
         {
           src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
@@ -74,7 +104,6 @@ export default defineComponent({
     const videoPlayer = ref<any | null>(null);
 
     function onPlayerReady() {
-      // Проверяем, что videoPlayer уже инициализирован
       if (videoPlayer.value && videoPlayer.value.player) {
         videoPlayer.value.player.on("play", () => {
           isPlaying.value = true;
@@ -87,27 +116,17 @@ export default defineComponent({
       }
     }
 
-    // function togglePlayPause() {
-    //   if (videoPlayer.value) {
-    //     if (isPlaying.value) {
-    //       videoPlayer.value.player.pause();
-    //     } else {
-    //       videoPlayer.value.player.play();
-    //     }
-    //   }
-    // }
-
     function toggleSize() {
-      if (currentState.value === "fullscreen") {
-        send({ type: "OPEN_MINIMIZED" });
+      if (currentState.value === "full") {
+        send({ type: "OPEN_MINI" });
       } else {
-        send({ type: "OPEN_FULLSCREEN" });
+        send({ type: "OPEN_FULL" });
       }
     }
 
     function openPlayer(size: string) {
       send({
-        type: size === "fullscreen" ? "OPEN_FULLSCREEN" : "OPEN_MINIMIZED",
+        type: size === "full" ? "OPEN_FULL" : "OPEN_MINI",
       });
     }
 
@@ -117,11 +136,9 @@ export default defineComponent({
       }
       send({ type: "CLOSE" });
     }
-
     return {
       currentState,
       videoOptions,
-      // togglePlayPause,
       toggleSize,
       openPlayer,
       closePlayer,
@@ -133,33 +150,9 @@ export default defineComponent({
 </script>
 
 <style>
-.minimized {
-  width: 320px;
-  height: 180px;
-}
-
-.fullscreen {
-  width: 100%;
-  height: 100vh;
-}
-
-.video-player {
-  max-width: 100%;
-  width: 100%;
-  height: 100%;
-}
-
 .controls {
   display: flex;
   justify-content: space-around;
   margin-top: 10px;
-}
-
-video {
-  width: 100%;
-}
-
-.ant-modal-body {
-  padding: 20px;
 }
 </style>
