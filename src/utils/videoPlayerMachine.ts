@@ -1,18 +1,17 @@
-// videoPlayerMachine.ts
-import { createMachine } from "xstate";
+import { setup } from "xstate";
 
-interface VideoPlayerContext {}
+type VideoPlayerContext = {};
 
-type VideoPlayerEvent =
-  | { type: "OPEN_MINIMIZED" }
-  | { type: "OPEN_FULLSCREEN" }
-  | { type: "CLOSE" }
-  | { type: "TOGGLE_PLAY_PAUSE" };
-
-export const videoPlayerMachine = createMachine<
-  VideoPlayerContext,
-  VideoPlayerEvent
->({
+const videoPlayerMachine = setup({
+  types: {
+    context: {} as VideoPlayerContext,
+    events: {} as
+      | { type: "OPEN_MINIMIZED" }
+      | { type: "OPEN_FULLSCREEN" }
+      | { type: "CLOSE" }
+      | { type: "TOGGLE_PLAY_PAUSE" },
+  },
+}).createMachine({
   id: "videoPlayer",
   initial: "closed",
   states: {
@@ -38,3 +37,5 @@ export const videoPlayerMachine = createMachine<
     },
   },
 });
+
+export default videoPlayerMachine;

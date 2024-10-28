@@ -1,50 +1,57 @@
 <template>
   <div>
     <!-- Кнопка открытия плеера -->
-    <button
-      v-if="currentState === 'closed'"
-      @click="send({ type: 'OPEN_MINIMIZED' })"
-    >
+    <button v-if="currentState === 'closed'" @click="openPlayer('minimized')">
       Open Player
     </button>
 
-    <!-- Контейнер для видеоплеера -->
-    <div
-      v-if="currentState !== 'closed'"
-      :class="{
-        minimized: currentState === 'minimized',
-        fullscreen: currentState === 'fullscreen',
-      }"
+    <!-- Модальное окно для видеоплеера -->
+    <a-modal
+      :open="currentState !== 'closed'"
+      :width="currentState === 'fullscreen' ? '100vw' : '50vw'"
+      :style="{ top: currentState === 'fullscreen' ? '0' : '10vh' }"
+      @cancel="closePlayer"
+      title="VIDEO PLAYER"
+      footer="{null}"
+      destroyOnClose
     >
-      <!-- Видеоплеер -->
-      <video-player
-        ref="videoPlayer"
-        class="video-player"
-        :options="videoOptions"
-        @ready="onPlayerReady"
-      ></video-player>
+      <div
+        :class="{
+          minimized: currentState === 'minimized',
+          fullscreen: currentState === 'fullscreen',
+        }"
+      >
+        <!-- Видеоплеер -->
+        <video-player
+          ref="videoPlayer"
+          class="video-player"
+          :options="videoOptions"
+          @ready="onPlayerReady"
+        ></video-player>
 
-      <!-- Контролы плеера -->
-      <button @click="togglePlayPause">
-        {{ isPlaying ? "Pause" : "Play" }}
-      </button>
-      <button @click="toggleSize">
-        {{ currentState === "fullscreen" ? "Minimize" : "Fullscreen" }}
-      </button>
-      <button @click="closePlayer">Close</button>
-    </div>
+        <!-- Контролы плеера -->
+        <div class="controls">
+          <button @click="toggleSize">
+            {{ currentState === "fullscreen" ? "Minimize" : "Fullscreen" }}
+          </button>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, watch } from "vue";
 import { useMachine } from "@xstate/vue";
-import { videoPlayerMachine } from "../utils/videoPlayerMachine";
+import videoPlayerMachine from "../utils/videoPlayerMachine";
+import { Modal } from "ant-design-vue"; // Импортируем модуль Modal
 
 export default defineComponent({
+  components: { Modal },
   setup() {
+    type VideoPlayerState = "closed" | "minimized" | "fullscreen";
     const { snapshot, send } = useMachine(videoPlayerMachine);
-    const isPlaying = ref(false); // Отслеживание состояния воспроизведения
+    const isPlaying = ref(false);
     const videoOptions = {
       autoplay: false,
       controls: true,
@@ -56,8 +63,7 @@ export default defineComponent({
       ],
     };
 
-    // Управление текущим состоянием
-    const currentState = ref(snapshot.value.value);
+    const currentState = ref<VideoPlayerState>(snapshot.value.value);
     watch(
       () => snapshot.value.value,
       (newState) => {
@@ -65,31 +71,32 @@ export default defineComponent({
       }
     );
 
-    const videoPlayer = ref<InstanceType<typeof VueVideoPlayer> | null>(null);
+    const videoPlayer = ref<any | null>(null);
 
     function onPlayerReady() {
-      if (videoPlayer.value) {
+      // Проверяем, что videoPlayer уже инициализирован
+      if (videoPlayer.value && videoPlayer.value.player) {
         videoPlayer.value.player.on("play", () => {
           isPlaying.value = true;
         });
         videoPlayer.value.player.on("pause", () => {
           isPlaying.value = false;
         });
+      } else {
+        console.error("Video player is not ready yet.");
       }
     }
 
-    // Переключение воспроизведения видео
-    function togglePlayPause() {
-      if (videoPlayer.value) {
-        if (isPlaying.value) {
-          videoPlayer.value.player.pause();
-        } else {
-          videoPlayer.value.player.play();
-        }
-      }
-    }
+    // function togglePlayPause() {
+    //   if (videoPlayer.value) {
+    //     if (isPlaying.value) {
+    //       videoPlayer.value.player.pause();
+    //     } else {
+    //       videoPlayer.value.player.play();
+    //     }
+    //   }
+    // }
 
-    // Переключение размера плеера
     function toggleSize() {
       if (currentState.value === "fullscreen") {
         send({ type: "OPEN_MINIMIZED" });
@@ -98,7 +105,12 @@ export default defineComponent({
       }
     }
 
-    // Закрытие плеера
+    function openPlayer(size: string) {
+      send({
+        type: size === "fullscreen" ? "OPEN_FULLSCREEN" : "OPEN_MINIMIZED",
+      });
+    }
+
     function closePlayer() {
       if (videoPlayer.value) {
         videoPlayer.value.player.pause();
@@ -109,18 +121,18 @@ export default defineComponent({
     return {
       currentState,
       videoOptions,
-      togglePlayPause,
+      // togglePlayPause,
       toggleSize,
+      openPlayer,
       closePlayer,
       onPlayerReady,
-      isPlaying,
       send,
     };
   },
 });
 </script>
 
-<style scoped>
+<style>
 .minimized {
   width: 320px;
   height: 180px;
@@ -133,5 +145,21 @@ export default defineComponent({
 
 .video-player {
   max-width: 100%;
+  width: 100%;
+  height: 100%;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+}
+
+video {
+  width: 100%;
+}
+
+.ant-modal-body {
+  padding: 20px;
 }
 </style>
