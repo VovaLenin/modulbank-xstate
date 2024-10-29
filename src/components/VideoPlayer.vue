@@ -13,7 +13,6 @@
       :style="{ top: currentState === 'full' ? '0' : '10vh' }"
       @cancel="closePlayer"
       title="YOU GOT RICKROLLED"
-      destroyOnClose
     >
       <video ref="videoPlayer" class="video-js"></video>
       <template #footer>
@@ -79,6 +78,7 @@ export default defineComponent({
     const videoOptions: videojs.PlayerOptions = {
       sources: [
         {
+          // src: "/hls/playlist.m3u8",
           src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
           type: "application/x-mpegURL",
         },
@@ -93,6 +93,7 @@ export default defineComponent({
       nextTick(() => {
         if (!videoPlayer.value) return;
         player.value = videojs(videoPlayer.value, videoOptions);
+        send({ type: "INIT_PLAYER" });
       });
     };
 
@@ -121,11 +122,16 @@ export default defineComponent({
 
     function openPlayer(size: "full" | "mini") {
       send({ type: size === "full" ? "OPEN_FULL" : "OPEN_MINI" });
-      initPlayer();
+      send({ type: "TOGGLE_PLAY_PAUSE" });
+      if (!snapshot.value.context.isInitialized) {
+        initPlayer();
+      }
     }
 
     function closePlayer() {
-      player.value?.pause();
+      if (snapshot.value.context.isPlaying) {
+        send({ type: "TOGGLE_PLAY_PAUSE" });
+      }
       send({ type: "CLOSE" });
     }
 
