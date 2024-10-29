@@ -28,7 +28,13 @@
         </a-button>
         <a-button key="play-pause" @click="togglePlayPause" shape="circle">
           <template v-slot:icon>
-            <component :is="isPlaying ? 'PauseOutlined' : 'CaretRightFilled'" />
+            <component
+              :is="
+                snapshot.context.isPlaying
+                  ? 'PauseOutlined'
+                  : 'CaretRightFilled'
+              "
+            />
           </template>
         </a-button>
       </template>
@@ -41,9 +47,9 @@ import {
   defineComponent,
   ref,
   watch,
-  computed,
   nextTick,
   onBeforeUnmount,
+  computed,
 } from "vue";
 import { useMachine } from "@xstate/vue";
 import { Modal } from "ant-design-vue";
@@ -68,7 +74,6 @@ export default defineComponent({
   },
   setup() {
     const videoPlayer = ref<HTMLVideoElement | null>(null);
-    const isPlaying = ref(false);
     const player = ref<videojs.Player | null>(null);
 
     const videoOptions: videojs.PlayerOptions = {
@@ -84,34 +89,25 @@ export default defineComponent({
       loop: true,
     };
 
-    const setupPlayerEventListeners = () => {
-      if (!player.value) return;
-      player.value.on("play", () => (isPlaying.value = true));
-      player.value.on("pause", () => (isPlaying.value = false));
-    };
-
     const initPlayer = () => {
       nextTick(() => {
         if (!videoPlayer.value) return;
-        player.value = videojs(
-          videoPlayer.value,
-          videoOptions,
-          setupPlayerEventListeners
-        );
+        player.value = videojs(videoPlayer.value, videoOptions);
       });
     };
 
-    type VideoPlayerState = "closed" | "mini" | "full";
     const { snapshot, send } = useMachine(videoPlayerMachine);
 
-    const currentState = computed(
-      () => snapshot.value.value as VideoPlayerState
-    );
+    const currentState = computed(() => snapshot.value.value);
 
     watch(
-      () => snapshot.value.value,
+      () => snapshot.value.context.isPlaying,
       () => {
-        isPlaying.value = snapshot.value.context.isPlaying;
+        if (snapshot.value.context.isPlaying) {
+          player.value?.play();
+        } else {
+          player.value?.pause();
+        }
       }
     );
 
@@ -121,10 +117,9 @@ export default defineComponent({
 
     function togglePlayPause() {
       send({ type: "TOGGLE_PLAY_PAUSE" });
-      isPlaying.value ? player.value?.pause() : player.value?.play();
     }
 
-    function openPlayer(size: VideoPlayerState) {
+    function openPlayer(size: "full" | "mini") {
       send({ type: size === "full" ? "OPEN_FULL" : "OPEN_MINI" });
       initPlayer();
     }
@@ -145,9 +140,8 @@ export default defineComponent({
       closePlayer,
       send,
       togglePlayPause,
-      isPlaying,
       videoPlayer,
-      initPlayer,
+      snapshot,
     };
   },
 });

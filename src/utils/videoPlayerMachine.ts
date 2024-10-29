@@ -1,6 +1,8 @@
 import { setup, assign } from "xstate";
 
-type VideoPlayerContext = {};
+type VideoPlayerContext = {
+  isPlaying: boolean;
+};
 
 const videoPlayerMachine = setup({
   types: {
