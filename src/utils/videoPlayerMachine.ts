@@ -22,7 +22,7 @@ const videoPlayerMachine = setup({
   id: "videoPlayer",
   initial: "closed",
   context: {
-    isPlaying: false,
+    isPlaying: true,
   },
   states: {
     closed: {

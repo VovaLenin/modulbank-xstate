@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Кнопка открытия плеера -->
     <div class="closed-modal">
       <PlayCircleOutlined
         v-if="currentState === 'closed'"
@@ -8,8 +7,6 @@
         @click="openPlayer('full')"
       />
     </div>
-
-    <!-- Модальное окно для видеоплеера -->
     <a-modal
       :open="currentState !== 'closed'"
       :width="currentState === 'full' ? '1000px' : '500px'"
@@ -19,7 +16,6 @@
       destroyOnClose
     >
       <video ref="videoPlayer" class="video-js"></video>
-
       <template #footer>
         <a-button key="screen-size" @click="toggleSize" shape="circle">
           <template v-slot:icon>
@@ -41,7 +37,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, nextTick, onBeforeUnmount } from "vue";
+import {
+  defineComponent,
+  ref,
+  watch,
+  computed,
+  nextTick,
+  onBeforeUnmount,
+} from "vue";
 import { useMachine } from "@xstate/vue";
 import { Modal } from "ant-design-vue";
 import {
@@ -66,9 +69,9 @@ export default defineComponent({
   setup() {
     const videoPlayer = ref<HTMLVideoElement | null>(null);
     const isPlaying = ref(false);
-    const player = ref<Object | null>(null);
+    const player = ref<videojs.Player | null>(null);
 
-    const videoOptions = {
+    const videoOptions: videojs.PlayerOptions = {
       sources: [
         {
           src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
@@ -81,62 +84,48 @@ export default defineComponent({
       loop: true,
     };
 
+    const setupPlayerEventListeners = () => {
+      if (!player.value) return;
+      player.value.on("play", () => (isPlaying.value = true));
+      player.value.on("pause", () => (isPlaying.value = false));
+    };
+
     const initPlayer = () => {
       nextTick(() => {
         if (!videoPlayer.value) return;
-
-        player.value = videojs(videoPlayer.value, videoOptions, () => {
-          // Обновляем состояние isPlaying при воспроизведении/паузе
-          player.value.on("play", () => {
-            isPlaying.value = true;
-          });
-          player.value.on("pause", () => {
-            isPlaying.value = false;
-          });
-        });
+        player.value = videojs(
+          videoPlayer.value,
+          videoOptions,
+          setupPlayerEventListeners
+        );
       });
     };
 
     type VideoPlayerState = "closed" | "mini" | "full";
     const { snapshot, send } = useMachine(videoPlayerMachine);
-    watch(
-      () => snapshot.value,
-      (newState) => {
-        console.log(newState);
-        isPlaying.value = newState.context.isPlaying;
-      }
+
+    const currentState = computed(
+      () => snapshot.value.value as VideoPlayerState
     );
 
-    const currentState = ref<VideoPlayerState>(snapshot.value.value);
     watch(
       () => snapshot.value.value,
-      (newState) => {
-        console.log(newState);
-        currentState.value = newState;
+      () => {
+        isPlaying.value = snapshot.value.context.isPlaying;
       }
     );
 
     function toggleSize() {
-      if (currentState.value === "full") {
-        send({ type: "OPEN_MINI" });
-      } else {
-        send({ type: "OPEN_FULL" });
-      }
+      send({ type: currentState.value === "full" ? "OPEN_MINI" : "OPEN_FULL" });
     }
 
     function togglePlayPause() {
       send({ type: "TOGGLE_PLAY_PAUSE" });
-      if (isPlaying.value) {
-        player.value?.pause();
-      } else {
-        player.value?.play();
-      }
+      isPlaying.value ? player.value?.pause() : player.value?.play();
     }
 
-    function openPlayer(size: string) {
-      send({
-        type: size === "full" ? "OPEN_FULL" : "OPEN_MINI",
-      });
+    function openPlayer(size: VideoPlayerState) {
+      send({ type: size === "full" ? "OPEN_FULL" : "OPEN_MINI" });
       initPlayer();
     }
 
