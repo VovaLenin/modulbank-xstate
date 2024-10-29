@@ -18,13 +18,7 @@
       title="YOU GOT RICKROLLED"
       destroyOnClose
     >
-      <!-- Видеоплеер -->
-      <video-player
-        ref="videoPlayer"
-        class="video-player"
-        :options="videoOptions"
-        @ready="onPlayerReady"
-      ></video-player>
+      <video ref="videoPlayer" class="video-js"></video>
 
       <template #footer>
         <a-button key="screen-size" @click="toggleSize" shape="circle">
@@ -47,7 +41,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, nextTick, onMounted } from "vue";
+import { defineComponent, ref, watch, nextTick, onBeforeUnmount } from "vue";
 import { useMachine } from "@xstate/vue";
 import { Modal } from "ant-design-vue";
 import {
@@ -58,6 +52,7 @@ import {
   PlayCircleOutlined,
 } from "@ant-design/icons-vue";
 import videoPlayerMachine from "../utils/videoPlayerMachine";
+import videojs from "video.js";
 
 export default defineComponent({
   components: {
@@ -69,10 +64,41 @@ export default defineComponent({
     PlayCircleOutlined,
   },
   setup() {
+    const videoPlayer = ref<HTMLVideoElement | null>(null);
+    const isPlaying = ref(false);
+    const player = ref<Object | null>(null);
+
+    const videoOptions = {
+      sources: [
+        {
+          src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
+          type: "application/x-mpegURL",
+        },
+      ],
+      autoplay: true,
+      controls: false,
+      fluid: true,
+      loop: true,
+    };
+
+    const initPlayer = () => {
+      nextTick(() => {
+        if (!videoPlayer.value) return;
+
+        player.value = videojs(videoPlayer.value, videoOptions, () => {
+          // Обновляем состояние isPlaying при воспроизведении/паузе
+          player.value.on("play", () => {
+            isPlaying.value = true;
+          });
+          player.value.on("pause", () => {
+            isPlaying.value = false;
+          });
+        });
+      });
+    };
+
     type VideoPlayerState = "closed" | "mini" | "full";
     const { snapshot, send } = useMachine(videoPlayerMachine);
-    const videoPlayer = ref(null);
-    const isPlaying = ref(false);
     watch(
       () => snapshot.value,
       (newState) => {
@@ -80,19 +106,6 @@ export default defineComponent({
         isPlaying.value = newState.context.isPlaying;
       }
     );
-    const videoOptions = {
-      autoplay: true,
-      controls: true,
-      responsive: true,
-      fluid: true,
-      loop: true,
-      sources: [
-        {
-          src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
-          type: "application/x-mpegURL",
-        },
-      ],
-    };
 
     const currentState = ref<VideoPlayerState>(snapshot.value.value);
     watch(
@@ -102,21 +115,6 @@ export default defineComponent({
         currentState.value = newState;
       }
     );
-
-    function onPlayerReady(): void {
-      nextTick(() => {
-        if (videoPlayer.value && videoPlayer.value.player) {
-          videoPlayer.value.player.on("play", () => {
-            isPlaying.value = true;
-          });
-          videoPlayer.value.player.on("pause", () => {
-            isPlaying.value = false;
-          });
-        } else {
-          console.error("Video player is not ready yet.");
-        }
-      });
-    }
 
     function toggleSize() {
       if (currentState.value === "full") {
@@ -128,15 +126,10 @@ export default defineComponent({
 
     function togglePlayPause() {
       send({ type: "TOGGLE_PLAY_PAUSE" });
-      console.log("df", videoPlayer);
-      if (videoPlayer.value && videoPlayer.value.player) {
-        if (isPlaying.value) {
-          videoPlayer.value.player.pause();
-        } else {
-          videoPlayer.value.player.play();
-        }
+      if (isPlaying.value) {
+        player.value?.pause();
       } else {
-        console.error("Video player is not ready yet.");
+        player.value?.play();
       }
     }
 
@@ -144,26 +137,28 @@ export default defineComponent({
       send({
         type: size === "full" ? "OPEN_FULL" : "OPEN_MINI",
       });
+      initPlayer();
     }
 
     function closePlayer() {
-      if (videoPlayer.value) {
-        videoPlayer.value.player.pause();
-      }
+      player.value?.pause();
       send({ type: "CLOSE" });
     }
 
+    onBeforeUnmount(() => {
+      player.value?.dispose();
+    });
+
     return {
       currentState,
-      videoOptions,
       toggleSize,
       openPlayer,
       closePlayer,
-      onPlayerReady,
       send,
       togglePlayPause,
       isPlaying,
       videoPlayer,
+      initPlayer,
     };
   },
 });
