@@ -2,7 +2,6 @@ import { setup, assign } from "xstate";
 
 type VideoPlayerContext = {
   isPlaying: boolean;
-  isInitialized: boolean;
 };
 
 const videoPlayerMachine = setup({
@@ -12,8 +11,7 @@ const videoPlayerMachine = setup({
       | { type: "OPEN_MINI" }
       | { type: "OPEN_FULL" }
       | { type: "CLOSE" }
-      | { type: "TOGGLE_PLAY_PAUSE" }
-      | { type: "INIT_PLAYER" },
+      | { type: "TOGGLE_PLAY_PAUSE" },
   },
   actions: {
     togglePlayPause: assign({
@@ -21,18 +19,13 @@ const videoPlayerMachine = setup({
         return !context.context.isPlaying;
       },
     }),
-    initializePlayer: assign({
-      isInitialized: () => {
-        return true;
-      },
-    }),
   },
 }).createMachine({
   id: "videoPlayer",
   initial: "closed",
+  // type: "parallel",
   context: {
     isPlaying: false,
-    isInitialized: false,
   },
   states: {
     closed: {
@@ -46,7 +39,6 @@ const videoPlayerMachine = setup({
         CLOSE: "closed",
         OPEN_FULL: "full",
         TOGGLE_PLAY_PAUSE: { actions: "togglePlayPause" },
-        INIT_PLAYER: { actions: "initializePlayer" },
       },
     },
     full: {
@@ -54,7 +46,6 @@ const videoPlayerMachine = setup({
         CLOSE: "closed",
         OPEN_MINI: "mini",
         TOGGLE_PLAY_PAUSE: { actions: "togglePlayPause" },
-        INIT_PLAYER: { actions: "initializePlayer" },
       },
     },
   },

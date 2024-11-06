@@ -78,8 +78,8 @@ export default defineComponent({
     const videoOptions: videojs.PlayerOptions = {
       sources: [
         {
-          src: "/hls/playlist.m3u8",
-          // src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
+          // src: "/hls/playlist.m3u8",
+          src: "https://cdn.flowplayer.com/d9cd469f-14fc-4b7b-a7f6-ccbfa755dcb8/hls/383f752a-cbd1-4691-a73f-a4e583391b3d/playlist.m3u8",
           type: "application/x-mpegURL",
         },
       ],
@@ -93,7 +93,6 @@ export default defineComponent({
       nextTick(() => {
         if (!videoPlayer.value) return;
         player.value = videojs(videoPlayer.value, videoOptions);
-        send({ type: "INIT_PLAYER" });
       });
     };
 
@@ -122,10 +121,10 @@ export default defineComponent({
 
     function openPlayer(size: "full" | "mini") {
       send({ type: size === "full" ? "OPEN_FULL" : "OPEN_MINI" });
-      send({ type: "TOGGLE_PLAY_PAUSE" });
-      if (!snapshot.value.context.isInitialized) {
+      if (!player.value) {
         initPlayer();
       }
+      send({ type: "TOGGLE_PLAY_PAUSE" });
     }
 
     function closePlayer() {
