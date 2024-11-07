@@ -98,7 +98,15 @@ export default defineComponent({
 
     const { snapshot, send } = useMachine(videoPlayerMachine);
 
-    const currentState = computed(() => snapshot.value.value);
+    const currentState = computed(() => {
+      if (snapshot.value.matches("closed")) {
+        return "closed";
+      } else if (snapshot.value.matches({ opened: { size: "full" } })) {
+        return "full";
+      } else if (snapshot.value.matches({ opened: { size: "mini" } })) {
+        return "mini";
+      }
+    });
 
     watch(
       () => snapshot.value.context.isPlaying,
@@ -112,25 +120,34 @@ export default defineComponent({
     );
 
     function toggleSize() {
-      send({ type: currentState.value === "full" ? "OPEN_MINI" : "OPEN_FULL" });
+      if (snapshot.value.matches({ opened: { size: "full" } })) {
+        send({ type: "OPEN_MINI" });
+      } else {
+        send({ type: "OPEN_FULL" });
+      }
     }
 
     function togglePlayPause() {
-      send({ type: "TOGGLE_PLAY_PAUSE" });
+      if (snapshot.value.matches({ opened: { playPause: "play" } })) {
+        send({ type: "TOGGLE_PAUSE" });
+      } else {
+        send({ type: "TOGGLE_PLAY" });
+      }
     }
 
     function openPlayer(size: "full" | "mini") {
-      send({ type: size === "full" ? "OPEN_FULL" : "OPEN_MINI" });
-      if (!player.value) {
-        initPlayer();
+      send({ type: "OPEN_MODAL" });
+      if (size === "mini") {
+        send({ type: "OPEN_MINI" });
       }
-      send({ type: "TOGGLE_PLAY_PAUSE" });
+      nextTick(() => {
+        if (!player.value) {
+          initPlayer();
+        }
+      });
     }
 
     function closePlayer() {
-      if (snapshot.value.context.isPlaying) {
-        send({ type: "TOGGLE_PLAY_PAUSE" });
-      }
       send({ type: "CLOSE" });
     }
 
